@@ -2,17 +2,19 @@ import React, { useState } from "react";
 import jsPDF from "jspdf";
 
 function App() {
-  const [file, setFile] = useState(null);
-  const [preview, setPreview] = useState(null);
-  const [result, setResult] = useState(null);
+  const [files, setFiles] = useState([]);
+  const [previews, setPreviews] = useState([]);
+  const [results, setResults] = useState([]);
+  const [patientID, setPatientID] = useState("");
+  const [darkMode, setDarkMode] = useState(false);
 
   const classes = ['cataract', 'diabetic_retinopathy', 'glaucoma', 'normal'];
 
   const descriptions = {
     cataract: "Clouding of the eye lens leading to blurry vision.",
     diabetic_retinopathy: "Damage to retinal blood vessels due to diabetes.",
-    glaucoma: "Optic nerve damage often caused by high eye pressure.",
-    normal: "No visible abnormalities detected."
+    glaucoma: "Optic nerve damage due to high eye pressure.",
+    normal: "No abnormalities detected."
   };
 
   const getRiskLevel = (confidence) => {
@@ -21,20 +23,28 @@ function App() {
     return "Low";
   };
 
-  const handleUpload = () => {
-    const pred = classes[Math.floor(Math.random() * classes.length)];
-    const confidence = Math.random() * 0.15 + 0.85;
-
-    setResult({
-      prediction: pred,
-      confidence: confidence
-    });
+  const handleFiles = (e) => {
+    const selected = Array.from(e.target.files);
+    setFiles(selected);
+    setPreviews(selected.map(file => URL.createObjectURL(file)));
   };
 
-  const handleFileChange = (e) => {
-    const selected = e.target.files[0];
-    setFile(selected);
-    setPreview(URL.createObjectURL(selected));
+  const analyze = () => {
+    const newResults = files.map(() => {
+      const probs = classes.map(() => Math.random());
+      const sum = probs.reduce((a, b) => a + b, 0);
+      const normalized = probs.map(p => p / sum);
+
+      const maxIndex = normalized.indexOf(Math.max(...normalized));
+
+      return {
+        prediction: classes[maxIndex],
+        confidence: normalized[maxIndex],
+        probs: normalized
+      };
+    });
+
+    setResults(newResults);
   };
 
   const downloadPDF = () => {
@@ -44,49 +54,100 @@ function App() {
     doc.text("AI Ophthalmology Report", 20, 20);
 
     doc.setFontSize(12);
-    doc.text(`Prediction: ${result.prediction}`, 20, 40);
-    doc.text(`Confidence: ${(result.confidence * 100).toFixed(2)}%`, 20, 50);
-    doc.text(`Risk Level: ${getRiskLevel(result.confidence)}`, 20, 60);
+    doc.text(`Patient ID: ${patientID}`, 20, 35);
 
-    doc.text("Description:", 20, 80);
-    doc.text(descriptions[result.prediction], 20, 90);
+    let y = 50;
+
+    results.forEach((res, i) => {
+      doc.text(`Image ${i + 1}:`, 20, y);
+      y += 10;
+      doc.text(`Prediction: ${res.prediction}`, 20, y);
+      y += 10;
+      doc.text(`Confidence: ${(res.confidence * 100).toFixed(2)}%`, 20, y);
+      y += 10;
+      doc.text(`Risk: ${getRiskLevel(res.confidence)}`, 20, y);
+      y += 15;
+    });
 
     doc.save("Eye_Report.pdf");
   };
 
   return (
-    <div style={{ textAlign: "center", marginTop: "40px", fontFamily: "Arial" }}>
+    <div style={{
+      background: darkMode ? "#121212" : "#f5f5f5",
+      color: darkMode ? "white" : "black",
+      minHeight: "100vh",
+      padding: "20px",
+      textAlign: "center"
+    }}>
+
       <h1>👁️ AI Eye Disease Detection</h1>
 
-      <input type="file" onChange={handleFileChange} />
-      <br /><br />
-
-      {preview && (
-        <img src={preview} alt="preview" width="250" style={{ borderRadius: "10px" }} />
-      )}
-
-      <br /><br />
-
-      <button onClick={handleUpload} style={{ padding: "10px 20px", fontSize: "16px" }}>
-        Analyze
+      <button onClick={() => setDarkMode(!darkMode)}>
+        Toggle {darkMode ? "Light" : "Dark"} Mode
       </button>
 
-      {result && (
-        <div style={{ marginTop: "30px" }}>
-          <h2>Prediction: {result.prediction}</h2>
-          <h3>Confidence: {(result.confidence * 100).toFixed(2)}%</h3>
-          <h3>Risk Level: {getRiskLevel(result.confidence)}</h3>
+      <br /><br />
 
-          <p style={{ width: "60%", margin: "auto" }}>
-            {descriptions[result.prediction]}
-          </p>
+      <input
+        type="text"
+        placeholder="Enter Patient ID"
+        value={patientID}
+        onChange={(e) => setPatientID(e.target.value)}
+      />
 
-          <br />
-          <button onClick={downloadPDF} style={{ padding: "10px 20px" }}>
-            📄 Download Report
-          </button>
+      <br /><br />
+
+      <input type="file" multiple onChange={handleFiles} />
+
+      <br /><br />
+
+      <div style={{ display: "flex", justifyContent: "center", gap: "20px" }}>
+        {previews.map((src, i) => (
+          <img key={i} src={src} alt="" width="150" />
+        ))}
+      </div>
+
+      <br />
+
+      <button onClick={analyze}>Analyze</button>
+
+      {results.map((res, idx) => (
+        <div key={idx} style={{ marginTop: "20px" }}>
+          <h2>Image {idx + 1}</h2>
+          <h3>{res.prediction}</h3>
+          <p>Confidence: {(res.confidence * 100).toFixed(2)}%</p>
+          <p>Risk: {getRiskLevel(res.confidence)}</p>
+          <p>{descriptions[res.prediction]}</p>
+
+          {/* Probability Bars */}
+          {res.probs.map((p, i) => (
+            <div key={i} style={{ margin: "5px auto", width: "50%" }}>
+              <div>{classes[i]}</div>
+              <div style={{
+                background: "#ccc",
+                height: "10px",
+                borderRadius: "5px"
+              }}>
+                <div style={{
+                  width: `${p * 100}%`,
+                  background: "#4CAF50",
+                  height: "100%",
+                  borderRadius: "5px"
+                }} />
+              </div>
+            </div>
+          ))}
         </div>
+      ))}
+
+      {results.length > 0 && (
+        <>
+          <br />
+          <button onClick={downloadPDF}>📄 Download Report</button>
+        </>
       )}
+
     </div>
   );
 }
