@@ -97,6 +97,7 @@ function App() {
         borderRadius: "15px"
       }}>
         <h1 style={{ textAlign: "center" }}>
+        <h1>NEW VERSION CHECK</h1>
           👁️ AI Eye Disease Detection
         </h1>
 
