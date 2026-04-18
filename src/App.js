@@ -18,8 +18,8 @@ function App() {
   };
 
   const getRiskLevel = (confidence) => {
-    if (confidence > 0.95) return "High";
-    if (confidence > 0.90) return "Medium";
+    if (confidence > 0.85) return "High";
+    if (confidence > 0.7) return "Medium";
     return "Low";
   };
 
@@ -29,133 +29,125 @@ function App() {
     setPreviews(selected.map(file => URL.createObjectURL(file)));
   };
 
-  const analyze = () => {
-    const newResults = files.map(() => {
-      const mainIndex = Math.floor(Math.random() * classes.length);
-  
-      let probs = classes.map(() => Math.random() * 0.2); // small base noise
-  
-      // Boost main class realistically (not too extreme)
-      probs[mainIndex] = Math.random() * 0.2 + 0.7; // 70–90%
-  
-      // Normalize ONLY slightly (optional but controlled)
-      const sum = probs.reduce((a, b) => a + b, 0);
-      probs = probs.map(p => p / sum);
-  
-      return {
-        prediction: classes[mainIndex],
-        confidence: probs[mainIndex],
+  // 🔥 REAL MODEL CALL
+  const analyze = async () => {
+    if (files.length === 0) {
+      alert("Upload an image first");
+      return;
+    }
+
+    const newResults = [];
+
+    for (let file of files) {
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const res = await fetch("http://<FRIEND_IP>:5000/predict", {
+        method: "POST",
+        body: formData
+      });
+
+      const data = await res.json();
+
+      const probs = classes.map(cls =>
+        cls === data.prediction ? data.confidence : (1 - data.confidence) / 3
+      );
+
+      newResults.push({
+        prediction: data.prediction,
+        confidence: data.confidence,
         probs: probs
-      };
-    });
-  
+      });
+    }
+
     setResults(newResults);
   };
 
   const downloadPDF = () => {
     const doc = new jsPDF();
-
-    doc.setFontSize(16);
     doc.text("AI Ophthalmology Report", 20, 20);
+    doc.text(`Patient ID: ${patientID}`, 20, 30);
 
-    doc.setFontSize(12);
-    doc.text(`Patient ID: ${patientID}`, 20, 35);
-
-    let y = 50;
+    let y = 40;
 
     results.forEach((res, i) => {
-      doc.text(`Image ${i + 1}:`, 20, y);
+      doc.text(`Image ${i + 1}`, 20, y);
       y += 10;
       doc.text(`Prediction: ${res.prediction}`, 20, y);
       y += 10;
       doc.text(`Confidence: ${(res.confidence * 100).toFixed(2)}%`, 20, y);
-      y += 10;
-      doc.text(`Risk: ${getRiskLevel(res.confidence)}`, 20, y);
       y += 15;
     });
 
-    doc.save("Eye_Report.pdf");
+    doc.save("report.pdf");
   };
 
   return (
     <div style={{
-      background: darkMode ? "#121212" : "#f5f5f5",
-      color: darkMode ? "white" : "black",
+      background: darkMode ? "#0f172a" : "#f1f5f9",
       minHeight: "100vh",
-      padding: "20px",
-      textAlign: "center"
+      padding: "30px"
     }}>
+      <div style={{
+        maxWidth: "900px",
+        margin: "auto",
+        background: darkMode ? "#1e293b" : "white",
+        padding: "30px",
+        borderRadius: "15px"
+      }}>
+        <h1 style={{ textAlign: "center" }}>
+          👁️ AI Eye Disease Detection
+        </h1>
 
-      <h1>👁️ AI Eye Disease Detection</h1>
+        <button onClick={() => setDarkMode(!darkMode)}>
+          Toggle Mode
+        </button>
 
-      <button onClick={() => setDarkMode(!darkMode)}>
-        Toggle {darkMode ? "Light" : "Dark"} Mode
-      </button>
+        <br /><br />
 
-      <br /><br />
+        <input
+          type="text"
+          placeholder="Patient ID"
+          value={patientID}
+          onChange={(e) => setPatientID(e.target.value)}
+        />
 
-      <input
-        type="text"
-        placeholder="Enter Patient ID"
-        value={patientID}
-        onChange={(e) => setPatientID(e.target.value)}
-      />
+        <br /><br />
 
-      <br /><br />
+        <input type="file" multiple onChange={handleFiles} />
 
-      <input type="file" multiple onChange={handleFiles} />
+        <br /><br />
 
-      <br /><br />
-
-      <div style={{ display: "flex", justifyContent: "center", gap: "20px" }}>
-        {previews.map((src, i) => (
-          <img key={i} src={src} alt="" width="150" />
-        ))}
-      </div>
-
-      <br />
-
-      <button onClick={analyze}>Analyze</button>
-
-      {results.map((res, idx) => (
-        <div key={idx} style={{ marginTop: "20px" }}>
-          <h2>Image {idx + 1}</h2>
-          <h3>{res.prediction}</h3>
-          <p>Confidence: {(res.confidence * 100).toFixed(2)}%</p>
-          <p>Risk: {getRiskLevel(res.confidence)}</p>
-          <p>{descriptions[res.prediction]}</p>
-
-          {/* Probability Bars */}
-          {res.probs.map((p, i) => (
-            <div key={i} style={{ margin: "5px auto", width: "50%" }}>
-              <div>{classes[i]}</div>
-              <div style={{
-                background: "#ccc",
-                height: "10px",
-                borderRadius: "5px"
-              }}>
-                <div style={{
-                  width: `${p * 100}%`,
-                  background: "#4CAF50",
-                  height: "100%",
-                  borderRadius: "5px"
-                }} />
-              </div>
-            </div>
+        <div style={{ display: "flex", gap: "10px" }}>
+          {previews.map((src, i) => (
+            <img key={i} src={src} width="120" />
           ))}
         </div>
-      ))}
 
-      {results.length > 0 && (
-        <>
-          <br />
-          <button onClick={downloadPDF}>📄 Download Report</button>
-        </>
-      )}
+        <br />
 
+        <button onClick={analyze}>Analyze</button>
+
+        {results.map((res, idx) => (
+          <div key={idx} style={{ marginTop: "20px" }}>
+            <h2>{res.prediction}</h2>
+            <p>Confidence: {(res.confidence * 100).toFixed(2)}%</p>
+            <p>Risk: {getRiskLevel(res.confidence)}</p>
+            <p>{descriptions[res.prediction]}</p>
+          </div>
+        ))}
+
+        {results.length > 0 && (
+          <>
+            <br />
+            <button onClick={downloadPDF}>
+              Download Report
+            </button>
+          </>
+        )}
+      </div>
     </div>
   );
 }
 
 export default App;
-<h1>CHECK VERSION</h1>
