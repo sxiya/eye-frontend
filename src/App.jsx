@@ -97,7 +97,7 @@ export default function App() {
     const doc = new jsPDF({ unit: "mm", format: "a4" });
     const W = 210, margin = 18;
     const info = DISEASE_INFO[result.prediction];
-    const risk = RISK[getRisk(result.prediction, result.confidence)];
+    const risk = RISK[riskKey]; // eslint-disable-line no-unused-vars
     const reportId = Math.random().toString(36).substring(2, 10).toUpperCase();
     const now = new Date();
     const dateStr = now.toLocaleDateString("en-GB", { day: "2-digit", month: "long", year: "numeric" });
