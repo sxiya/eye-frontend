@@ -31,22 +31,29 @@ function App() {
 
   const analyze = () => {
     const newResults = files.map(() => {
-      const probs = classes.map(() => Math.random());
+      const mainIndex = Math.floor(Math.random() * classes.length);
+  
+      let probs = classes.map((_, i) => {
+        if (i === mainIndex) {
+          return Math.random() * 0.1 + 0.85; // high confidence
+        } else {
+          return Math.random() * 0.05; // low others
+        }
+      });
+  
       const sum = probs.reduce((a, b) => a + b, 0);
       const normalized = probs.map(p => p / sum);
-
-      const maxIndex = normalized.indexOf(Math.max(...normalized));
-
+  
       return {
-        prediction: classes[maxIndex],
-        confidence: normalized[maxIndex],
+        prediction: classes[mainIndex],
+        confidence: normalized[mainIndex],
         probs: normalized
       };
     });
-
+  
     setResults(newResults);
   };
-
+  
   const downloadPDF = () => {
     const doc = new jsPDF();
 
