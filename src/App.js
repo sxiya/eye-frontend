@@ -33,27 +33,21 @@ function App() {
     const newResults = files.map(() => {
       const mainIndex = Math.floor(Math.random() * classes.length);
   
-      let probs = classes.map((_, i) => {
-        if (i === mainIndex) {
-          return Math.random() * 0.1 + 0.85; // high confidence
-        } else {
-          return Math.random() * 0.05; // low others
-        }
-      });
+      // Create fake realistic probabilities
+      let probs = [0.02, 0.03, 0.04, 0.05]; // base small values
   
-      const sum = probs.reduce((a, b) => a + b, 0);
-      const normalized = probs.map(p => p / sum);
+      probs[mainIndex] = Math.random() * 0.1 + 0.85; // main = 85–95%
   
       return {
         prediction: classes[mainIndex],
-        confidence: normalized[mainIndex],
-        probs: normalized
+        confidence: probs[mainIndex],
+        probs: probs
       };
     });
   
     setResults(newResults);
   };
-  
+
   const downloadPDF = () => {
     const doc = new jsPDF();
 
