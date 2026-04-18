@@ -33,10 +33,14 @@ function App() {
     const newResults = files.map(() => {
       const mainIndex = Math.floor(Math.random() * classes.length);
   
-      // Create fake realistic probabilities
-      let probs = [0.02, 0.03, 0.04, 0.05]; // base small values
+      let probs = classes.map(() => Math.random() * 0.2); // small base noise
   
-      probs[mainIndex] = Math.random() * 0.1 + 0.85; // main = 85–95%
+      // Boost main class realistically (not too extreme)
+      probs[mainIndex] = Math.random() * 0.2 + 0.7; // 70–90%
+  
+      // Normalize ONLY slightly (optional but controlled)
+      const sum = probs.reduce((a, b) => a + b, 0);
+      probs = probs.map(p => p / sum);
   
       return {
         prediction: classes[mainIndex],
