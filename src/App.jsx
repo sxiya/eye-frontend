@@ -97,6 +97,7 @@ export default function App() {
     if (!result) return;
     const doc = new jsPDF({ unit: "mm", format: "a4" });
     const W = 210, margin = 18;
+    const riskKey = getRisk(result.prediction, result.confidence);
     const info = DISEASE_INFO[result.prediction];
     const risk = RISK[riskKey]; // eslint-disable-line no-unused-vars
     const reportId = Math.random().toString(36).substring(2, 10).toUpperCase();
